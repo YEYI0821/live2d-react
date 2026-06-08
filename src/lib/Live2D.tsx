@@ -31,7 +31,10 @@ export type Live2DProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   bodyHitAreaName?: string;
   canvasStyle?: CSSProperties;
   renderOptions?: Live2DRenderOptions;
-  onModelReady?: (setParameter: (id: string, value: number) => void) => void;
+  onModelReady?: (
+    setParameter: (id: string, value: number) => void,
+    paramIds: string[]
+  ) => void;
 };
 
 type ViewerInstance = {
@@ -39,7 +42,13 @@ type ViewerInstance = {
   setModel(modelJsonPath: string): Promise<void>;
   setRenderOptions(renderOptions?: Live2DRenderOptions): void;
   setParameter(id: string, value: number): void;
-  setOnModelReady(cb: (setter: (id: string, value: number) => void) => void): void;
+  setOnModelReady(
+    cb: (
+      setter: (id: string, value: number) => void,
+      paramIds: string[]
+    ) => void
+  ): void;
+  getParameterIds(): string[];
   dispose(): void;
 };
 

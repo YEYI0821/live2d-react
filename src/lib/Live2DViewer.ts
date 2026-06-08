@@ -67,7 +67,12 @@ export class Live2DViewer {
   private renderOptions: Live2DRenderOptions | undefined;
   private rawModelMatrix: Float32Array | null = null;
   private _pendingParams: Array<{ id: string; value: number }> = [];
-  private _onModelReady: ((setter: (id: string, value: number) => void) => void) | null = null;
+  private _onModelReady:
+    | ((
+        setter: (id: string, value: number) => void,
+        paramIds: string[]
+      ) => void)
+    | null = null;
   private _modelReadyFired = false;
   private logicalLeft = -1;
   private logicalRight = 1;
@@ -153,9 +158,25 @@ export class Live2DViewer {
   }
 
   public setOnModelReady(
-    cb: (setter: (id: string, value: number) => void) => void
+    cb: (
+      setter: (id: string, value: number) => void,
+      paramIds: string[]
+    ) => void
   ): void {
     this._onModelReady = cb;
+  }
+
+  /** Returns the model's actual parameter IDs. Empty if model not ready. */
+  public getParameterIds(): string[] {
+    const ids: string[] = [];
+    if (!this.model || !this.model.isReadyToRender()) return ids;
+    const m = this.model.getModel();
+    if (!m) return ids;
+    const count = m.getParameterCount();
+    for (let i = 0; i < count; i++) {
+      ids.push(m.getParameterId(i).getString());
+    }
+    return ids;
   }
 
   public dispose(): void {
@@ -318,7 +339,10 @@ export class Live2DViewer {
       this.model.isReadyToRender()
     ) {
       this._modelReadyFired = true;
-      this._onModelReady(this.setParameter.bind(this));
+      this._onModelReady(
+        this.setParameter.bind(this),
+        this.getParameterIds()
+      );
     }
 
     this.applyRenderOptions();
