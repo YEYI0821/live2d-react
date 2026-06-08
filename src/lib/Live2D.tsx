@@ -31,12 +31,15 @@ export type Live2DProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
   bodyHitAreaName?: string;
   canvasStyle?: CSSProperties;
   renderOptions?: Live2DRenderOptions;
+  onModelReady?: (setParameter: (id: string, value: number) => void) => void;
 };
 
 type ViewerInstance = {
   mount(): Promise<void>;
   setModel(modelJsonPath: string): Promise<void>;
   setRenderOptions(renderOptions?: Live2DRenderOptions): void;
+  setParameter(id: string, value: number): void;
+  setOnModelReady(cb: (setter: (id: string, value: number) => void) => void): void;
   dispose(): void;
 };
 
@@ -50,6 +53,7 @@ export function Live2D({
   style,
   canvasStyle,
   renderOptions,
+  onModelReady,
   ...rest
 }: Live2DProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -86,6 +90,11 @@ export function Live2D({
           renderOptions: latestRenderOptionsRef.current
         });
         viewerRef.current = viewer;
+
+        // Register onModelReady callback (fires in draw loop when model is ready)
+        if (onModelReady) {
+          viewer.setOnModelReady(onModelReady);
+        }
 
         return viewer.mount().then(() =>
           viewer?.setModel(initialModelJsonPathRef.current)

@@ -66,6 +66,9 @@ export class Live2DViewer {
   private disposed = false;
   private renderOptions: Live2DRenderOptions | undefined;
   private rawModelMatrix: Float32Array | null = null;
+  private _pendingParams: Array<{ id: string; value: number }> = [];
+  private _onModelReady: ((setter: (id: string, value: number) => void) => void) | null = null;
+  private _modelReadyFired = false;
   private logicalLeft = -1;
   private logicalRight = 1;
   private logicalTop = 1;
@@ -141,6 +144,20 @@ export class Live2DViewer {
     this.resize();
   }
 
+  /**
+   * Queue a parameter value to be flushed in the next draw cycle.
+   * Safe to call before model is ready — parameters are buffered.
+   */
+  public setParameter(id: string, value: number): void {
+    this._pendingParams.push({ id, value });
+  }
+
+  public setOnModelReady(
+    cb: (setter: (id: string, value: number) => void) => void
+  ): void {
+    this._onModelReady = cb;
+  }
+
   public dispose(): void {
     this.disposed = true;
 
@@ -158,6 +175,8 @@ export class Live2DViewer {
     this.canvas.removeEventListener('pointerleave', this.handlePointerUp);
     this.canvas.removeEventListener('pointercancel', this.handlePointerUp);
 
+    this._onModelReady = null;
+    this._modelReadyFired = false;
     this.model?.release();
     this.model = null;
     this.textureManager.release();
@@ -274,6 +293,29 @@ export class Live2DViewer {
 
     if (!this.model) {
       return;
+    }
+
+    // Flush pending parameters before model.update() — Cubism SDK requires
+    // parameters to be set before update() for vertex recalculation.
+    const cubismModel = this.model.getModel();
+    if (cubismModel && this._pendingParams.length > 0) {
+      for (const { id, value } of this._pendingParams) {
+        const paramIndex = cubismModel.getParameterIndex(id);
+        if (paramIndex >= 0) {
+          cubismModel.setParameterValueByIndex(paramIndex, value);
+        }
+      }
+      this._pendingParams = [];
+    }
+
+    // Fire onModelReady on the first frame where model is actually ready
+    if (
+      !this._modelReadyFired &&
+      this._onModelReady &&
+      this.model.isReadyToRender()
+    ) {
+      this._modelReadyFired = true;
+      this._onModelReady(this.setParameter.bind(this));
     }
 
     this.applyRenderOptions();
