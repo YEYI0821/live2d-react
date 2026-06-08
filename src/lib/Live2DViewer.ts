@@ -299,8 +299,10 @@ export class Live2DViewer {
     // parameters to be set before update() for vertex recalculation.
     const cubismModel = this.model.getModel();
     if (cubismModel && this._pendingParams.length > 0) {
+      const idManager = CubismFramework.getIdManager();
       for (const { id, value } of this._pendingParams) {
-        const paramIndex = cubismModel.getParameterIndex(id);
+        const paramId = idManager.getId(id);
+        const paramIndex = cubismModel.getParameterIndex(paramId);
         if (paramIndex >= 0) {
           cubismModel.setParameterValueByIndex(paramIndex, value);
         }

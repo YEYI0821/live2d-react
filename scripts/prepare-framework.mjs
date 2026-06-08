@@ -1,10 +1,11 @@
 import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 
-const root = new URL('..', import.meta.url);
-const sourceDir = new URL('../src/cubism/framework', import.meta.url);
-const outputDir = new URL('../dist/cubism/framework', import.meta.url);
-const distDir = new URL('../dist', import.meta.url);
+const root = fileURLToPath(new URL('..', import.meta.url));
+const sourceDir = fileURLToPath(new URL('../src/cubism/framework', import.meta.url));
+const outputDir = fileURLToPath(new URL('../dist/cubism/framework', import.meta.url));
+const distDir = fileURLToPath(new URL('../dist', import.meta.url));
 
 function walk(dir, visitor) {
   for (const entry of readdirSync(dir)) {
@@ -48,10 +49,10 @@ function appendJsExtension(specifier) {
 }
 
 rmSync(outputDir, { recursive: true, force: true });
-mkdirSync(new URL('../dist/cubism', import.meta.url), { recursive: true });
+mkdirSync(join(root, 'dist', 'cubism'), { recursive: true });
 cpSync(sourceDir, outputDir, { recursive: true });
 
-walk(distDir.pathname, filePath => {
+walk(distDir, filePath => {
   if (filePath.endsWith('.map') || filePath.endsWith('.d.ts.map')) {
     unlinkSync(filePath);
     return;
