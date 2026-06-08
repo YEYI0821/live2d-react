@@ -369,6 +369,7 @@ export class LAppModel extends CubismUserModel {
 
     // EyeBlink
     const setupEyeBlink = (): void => {
+      console.log('[LAppModel] EyeBlink param count:', this._modelSetting.getEyeBlinkParameterCount());
       if (this._modelSetting.getEyeBlinkParameterCount() > 0) {
         this._eyeBlink = CubismEyeBlink.create(this._modelSetting);
         const eyeBlinkUpdater = new CubismEyeBlinkUpdater(
@@ -384,36 +385,12 @@ export class LAppModel extends CubismUserModel {
       setupBreath();
     };
 
-    // Breath
+    // Breath — disabled: we control parameters via AnimationScheduler
     const setupBreath = (): void => {
-      this._breath = CubismBreath.create();
-
-      const breathParameters: Array<BreathParameterData> = [
-        new BreathParameterData(this._idParamAngleX, 0.0, 15.0, 6.5345, 0.5),
-        new BreathParameterData(this._idParamAngleY, 0.0, 8.0, 3.5345, 0.5),
-        new BreathParameterData(this._idParamAngleZ, 0.0, 10.0, 5.5345, 0.5),
-        new BreathParameterData(
-          this._idParamBodyAngleX,
-          0.0,
-          4.0,
-          15.5345,
-          0.5
-        ),
-        new BreathParameterData(
-          CubismFramework.getIdManager().getId(
-            CubismDefaultParameterId.ParamBreath
-          ),
-          0.5,
-          0.5,
-          3.2345,
-          1
-        )
-      ];
-
-      this._breath.setParameters(breathParameters);
-
-      const breathUpdater = new CubismBreathUpdater(this._breath);
-      this._updateScheduler.addUpdatableList(breathUpdater);
+      // SDK auto-breath controller conflicts with our manual parameter control.
+      // It modulates ParamAngleX/Y/Z, ParamBodyAngleX, and ParamBreath —
+      // all of which we drive through AnimationScheduler.
+      // Do NOT create CubismBreath here.
 
       this._state = LoadStep.LoadUserData;
 

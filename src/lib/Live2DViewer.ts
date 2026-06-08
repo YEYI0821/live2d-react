@@ -67,6 +67,7 @@ export class Live2DViewer {
   private renderOptions: Live2DRenderOptions | undefined;
   private rawModelMatrix: Float32Array | null = null;
   private _pendingParams: Array<{ id: string; value: number }> = [];
+  private _lastParams: Map<string, number> = new Map();
   private _onModelReady:
     | ((
         setter: (id: string, value: number) => void,
@@ -154,7 +155,11 @@ export class Live2DViewer {
    * Safe to call before model is ready — parameters are buffered.
    */
   public setParameter(id: string, value: number): void {
+    if ((window as any).__live2dDebug) {
+      if (!(window as any).__live2dFirstParam) { (window as any).__live2dFirstParam = true; console.log('[Live2D] setParameter first call:', id, value); }
+    }
     this._pendingParams.push({ id, value });
+    this._lastParams.set(id, value);
   }
 
   public setOnModelReady(
@@ -317,28 +322,6 @@ export class Live2DViewer {
       return;
     }
 
-    // Flush pending parameters before model.update() — Cubism SDK requires
-    // parameters to be set before update() for vertex recalculation.
-    const cubismModel = this.model.getModel();
-    if (cubismModel && this._pendingParams.length > 0) {
-      const idManager = CubismFramework.getIdManager();
-      let setCount = 0;
-      let missCount = 0;
-      for (const { id, value } of this._pendingParams) {
-        const paramId = idManager.getId(id);
-        const paramIndex = cubismModel.getParameterIndex(paramId);
-        if (paramIndex >= 0) {
-          cubismModel.setParameterValueByIndex(paramIndex, value);
-          setCount++;
-        } else {
-          if (missCount === 0) console.warn('[Live2D] param not found:', id);
-          missCount++;
-        }
-      }
-      if (setCount > 0 && (window as any).__live2dDebug) console.log('[Live2D] flushed', setCount, 'params, missed', missCount);
-      this._pendingParams = [];
-    }
-
     // Fire onModelReady on the first frame where model is actually ready
     if (
       !this._modelReadyFired &&
@@ -371,6 +354,24 @@ export class Live2DViewer {
     }
 
     this.model.update();
+
+    // Re-apply our parameter overrides every frame after model.update().
+    // model.update() calls loadParameters() which restores SDK's saved values,
+    // so we must continuously re-set our params to maintain control.
+    const postModel = this.model.getModel();
+    if (postModel && this._lastParams.size > 0) {
+      const idManager = CubismFramework.getIdManager();
+      for (const [id, value] of this._lastParams) {
+        const paramId = idManager.getId(id);
+        const paramIndex = postModel.getParameterIndex(paramId);
+        if (paramIndex >= 0) {
+          postModel.setParameterValueByIndex(paramIndex, value);
+        }
+      }
+      this._pendingParams = [];
+      postModel.update();
+    }
+
     this.model.draw(projection);
 
     CubismWebGLOffscreenManager.getInstance().endFrameProcess(gl);
