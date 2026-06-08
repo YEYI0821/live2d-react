@@ -177,6 +177,7 @@ export class Live2DViewer {
 
     this._onModelReady = null;
     this._modelReadyFired = false;
+    this._pendingParams = [];
     this.model?.release();
     this.model = null;
     this.textureManager.release();
