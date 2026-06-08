@@ -322,13 +322,20 @@ export class Live2DViewer {
     const cubismModel = this.model.getModel();
     if (cubismModel && this._pendingParams.length > 0) {
       const idManager = CubismFramework.getIdManager();
+      let setCount = 0;
+      let missCount = 0;
       for (const { id, value } of this._pendingParams) {
         const paramId = idManager.getId(id);
         const paramIndex = cubismModel.getParameterIndex(paramId);
         if (paramIndex >= 0) {
           cubismModel.setParameterValueByIndex(paramIndex, value);
+          setCount++;
+        } else {
+          if (missCount === 0) console.warn('[Live2D] param not found:', id);
+          missCount++;
         }
       }
+      if (setCount > 0 && (window as any).__live2dDebug) console.log('[Live2D] flushed', setCount, 'params, missed', missCount);
       this._pendingParams = [];
     }
 
